@@ -1,0 +1,137 @@
+apiVersion: envelope.ai/v1
+kind: DataClassTaxonomy
+metadata:
+  name: retail
+  version: v1.0.0
+  description: Retail and e-commerce data taxonomy
+spec:
+  sensitivityLevels:
+    - name: public
+      rank: 0
+      description: Public product and store information
+      handlingRules:
+        - No restrictions
+
+    - name: internal
+      rank: 1
+      description: Internal business data
+      handlingRules:
+        - Standard access controls
+
+    - name: confidential
+      rank: 2
+      description: Customer and order data
+      handlingRules:
+        - Encryption required
+        - Access logging
+
+    - name: restricted
+      rank: 3
+      description: Payment and sensitive personal data
+      handlingRules:
+        - Strong encryption
+        - Strict access controls
+        - Audit trail required
+
+    - name: prohibited
+      rank: 4
+      description: Data not processable by AI
+      handlingRules:
+        - Manual handling only
+
+  classes:
+    - name: product_catalog
+      displayName: Product Catalog
+      description: Public product information
+      sensitivity: public
+
+    - name: store_info
+      displayName: Store Information
+      description: Store locations and hours
+      sensitivity: public
+
+    - name: pricing_info
+      displayName: Pricing Information
+      description: Product pricing (non-promotional)
+      sensitivity: internal
+
+    - name: inventory_data
+      displayName: Inventory Data
+      description: Stock levels and availability
+      sensitivity: internal
+      retentionDays: 365
+
+    - name: customer_profile
+      displayName: Customer Profile
+      description: Customer account information
+      sensitivity: confidential
+      piiFields:
+        - name
+        - email
+        - phone
+        - address
+      encryptionRequired: true
+      retentionDays: 1825
+      regulatoryFrameworks:
+        - CCPA
+        - GDPR
+
+    - name: order_history
+      displayName: Order History
+      description: Customer order records
+      sensitivity: confidential
+      piiFields:
+        - customer_id
+        - shipping_address
+        - order_items
+      encryptionRequired: true
+      retentionDays: 2555
+      regulatoryFrameworks:
+        - CCPA
+
+    - name: payment_info
+      displayName: Payment Information
+      description: Payment method and transaction data
+      sensitivity: restricted
+      piiFields:
+        - card_number
+        - billing_address
+        - payment_method
+      encryptionRequired: true
+      retentionDays: 2555
+      regulatoryFrameworks:
+        - PCI-DSS
+        - CCPA
+      placements:
+        allowed:
+          - pci-secure
+        denied:
+          - public-cloud
+          - edge
+
+    - name: loyalty_data
+      displayName: Loyalty Data
+      description: Loyalty program information
+      sensitivity: internal
+      piiFields:
+        - loyalty_id
+        - points_balance
+      retentionDays: 1825
+
+    - name: returns_data
+      displayName: Returns Data
+      description: Return and refund records
+      sensitivity: confidential
+      piiFields:
+        - customer_id
+        - order_id
+      encryptionRequired: true
+      retentionDays: 1095
+
+    - name: shipping_tracking
+      displayName: Shipping Tracking
+      description: Shipment tracking information
+      sensitivity: internal
+      piiFields:
+        - shipping_address
+      retentionDays: 365

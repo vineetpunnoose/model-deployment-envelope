@@ -1,0 +1,81 @@
+apiVersion: envelope.ai/v1
+kind: ModelManifest
+metadata:
+  name: bfsi-customer-agent
+  version: v1.0.0
+  description: Customer service agent for banking inquiries
+  labels:
+    domain: bfsi
+    use-case: customer-service
+  annotations:
+    owner: customer-experience-team
+    compliance-reviewed: "true"
+spec:
+  model:
+    id: llama3.1:8b
+    backend: ollama
+    endpoint: http://localhost:11434
+    parameters:
+      temperature: 0.3
+      maxTokens: 1024
+
+  tools:
+    allowed:
+      - account_lookup
+      - balance_inquiry
+      - transaction_history
+      - transfer_funds
+      - card_status
+    manifests:
+      - tools/account_lookup.yaml
+      - tools/balance_inquiry.yaml
+      - tools/transaction_history.yaml
+      - tools/transfer_funds.yaml
+      - tools/card_status.yaml
+
+  dataClasses:
+    allowed:
+      - general_inquiry
+      - account_info
+      - transaction_data
+    taxonomy: taxonomy.yaml
+
+  placement:
+    policy: placement.yaml
+    currentPlacement: on-premises-dc
+
+  escalation:
+    conditions:
+      - id: low-confidence
+        trigger: confidence_low
+        threshold: 0.4
+
+      - id: tool-failure
+        trigger: tool_failure
+
+      - id: compliance-violation
+        trigger: policy_violation
+
+      - id: explicit-handoff
+        trigger: explicit_request
+
+      - id: restricted-data
+        trigger: data_class_mismatch
+
+    handler:
+      type: webhook
+      endpoint: https://case-system.internal/api/escalations
+      config:
+        timeout: 30
+        retry: 3
+
+  callers:
+    allowedRoles:
+      - customer_service_agent
+      - customer_service_supervisor
+    allowedCallerIds: []
+
+  goldenSet:
+    path: golden_set.yaml
+    runOnLoad: true
+    runOnSchedule: "0 * * * *"

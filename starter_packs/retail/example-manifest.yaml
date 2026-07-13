@@ -1,0 +1,90 @@
+apiVersion: envelope.ai/v1
+kind: ModelManifest
+metadata:
+  name: retail-shopping-assistant
+  version: v1.0.0
+  description: AI assistant for retail shopping and customer support
+  labels:
+    domain: retail
+    use-case: customer-support
+  annotations:
+    owner: digital-experience-team
+    compliance-reviewed: "true"
+spec:
+  model:
+    id: llama3.1:8b
+    backend: ollama
+    endpoint: http://localhost:11434
+    parameters:
+      temperature: 0.5
+      maxTokens: 2048
+
+  tools:
+    allowed:
+      - product_search
+      - inventory_check
+      - order_status
+      - store_locator
+      - returns_initiate
+    manifests:
+      - tools/product_search.yaml
+      - tools/inventory_check.yaml
+      - tools/order_status.yaml
+      - tools/store_locator.yaml
+      - tools/returns_initiate.yaml
+
+  dataClasses:
+    allowed:
+      - product_catalog
+      - store_info
+      - pricing_info
+      - inventory_data
+      - order_history
+      - shipping_tracking
+    taxonomy: taxonomy.yaml
+
+  placement:
+    policy: placement.yaml
+    currentPlacement: cloud-primary
+
+  escalation:
+    conditions:
+      - id: low-confidence
+        trigger: confidence_low
+        threshold: 0.35
+
+      - id: payment-inquiry
+        trigger: data_class_mismatch
+        dataClasses:
+          - payment_info
+
+      - id: customer-profile-access
+        trigger: data_class_mismatch
+        dataClasses:
+          - customer_profile
+
+      - id: explicit-agent
+        trigger: explicit_request
+
+      - id: returns-high-value
+        trigger: custom
+        customRule: order_value > 500
+
+    handler:
+      type: webhook
+      endpoint: https://support-system.internal/api/escalations
+      config:
+        timeout: 30
+        retry: 3
+
+  callers:
+    allowedRoles:
+      - customer_service_agent
+      - store_associate
+      - chatbot_service
+    allowedCallerIds: []
+
+  goldenSet:
+    path: golden_set.yaml
+    runOnLoad: true
+    runOnSchedule: "0 */4 * * *"

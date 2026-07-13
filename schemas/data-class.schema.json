@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://envelope.example.com/schemas/data-class.schema.json",
+  "title": "Data Class Taxonomy",
+  "description": "Data classification taxonomy with sensitivity levels and handling rules",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "const": "envelope.ai/v1"
+    },
+    "kind": {
+      "type": "string",
+      "const": "DataClassTaxonomy"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Taxonomy name (e.g., 'bfsi', 'retail', 'healthcare')"
+        },
+        "version": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["sensitivityLevels", "classes"],
+      "properties": {
+        "sensitivityLevels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "rank"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "enum": ["public", "internal", "confidential", "restricted", "prohibited"]
+              },
+              "rank": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Higher rank = more sensitive"
+              },
+              "description": {
+                "type": "string"
+              },
+              "handlingRules": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "classes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dataClass"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "dataClass": {
+      "type": "object",
+      "required": ["name", "sensitivity"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Data class identifier"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "sensitivity": {
+          "type": "string",
+          "enum": ["public", "internal", "confidential", "restricted", "prohibited"]
+        },
+        "piiFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields containing PII that require special handling"
+        },
+        "retentionDays": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum retention period in days (0 = no retention)"
+        },
+        "encryptionRequired": {
+          "type": "boolean",
+          "default": false
+        },
+        "placements": {
+          "type": "object",
+          "properties": {
+            "allowed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Placement IDs where this data class is allowed"
+            },
+            "denied": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Placement IDs where this data class is explicitly denied"
+            }
+          }
+        },
+        "regulatoryFrameworks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Applicable regulatory frameworks (e.g., GDPR, CCPA, PCI-DSS)"
+        },
+        "parentClass": {
+          "type": "string",
+          "description": "Parent data class for inheritance"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://envelope.example.com/schemas/placement-policy.schema.json",
+  "title": "Placement Policy",
+  "description": "Placement policy defining where models and data may be deployed",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "const": "envelope.ai/v1"
+    },
+    "kind": {
+      "type": "string",
+      "const": "PlacementPolicy"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["placements", "rules"],
+      "properties": {
+        "placements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/placement"
+          },
+          "description": "Available placement locations"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/rule"
+          },
+          "description": "Placement rules evaluated in order"
+        },
+        "defaultAction": {
+          "type": "string",
+          "enum": ["allow", "deny"],
+          "default": "deny",
+          "description": "Action when no rules match (deny-by-default)"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "placement": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Unique placement identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["on-premises", "private-cloud", "public-cloud", "edge", "hybrid"],
+          "description": "Type of deployment location"
+        },
+        "provider": {
+          "type": "string",
+          "description": "Cloud provider or infrastructure provider"
+        },
+        "region": {
+          "type": "string",
+          "description": "Geographic region"
+        },
+        "jurisdiction": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Legal jurisdictions (e.g., 'EU', 'US', 'IN')"
+        },
+        "certifications": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Security certifications (e.g., 'SOC2', 'ISO27001', 'PCI-DSS')"
+        },
+        "encryptionAtRest": {
+          "type": "boolean",
+          "default": true
+        },
+        "encryptionInTransit": {
+          "type": "boolean",
+          "default": true
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional placement attributes"
+        }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "required": ["id", "conditions", "action"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique rule identifier"
+        },
+        "description": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "integer",
+          "default": 100,
+          "description": "Lower number = higher priority"
+        },
+        "conditions": {
+          "type": "object",
+          "properties": {
+            "dataClasses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Data classes this rule applies to"
+            },
+            "sensitivity": {
+              "type": "object",
+              "properties": {
+                "min": {
+                  "type": "string",
+                  "enum": ["public", "internal", "confidential", "restricted", "prohibited"]
+                },
+                "max": {
+                  "type": "string",
+                  "enum": ["public", "internal", "confidential", "restricted", "prohibited"]
+                }
+              }
+            },
+            "placementType": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["on-premises", "private-cloud", "public-cloud", "edge", "hybrid"]
+              }
+            },
+            "jurisdiction": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "requiredCertifications": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "callerRoles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "timeWindow": {
+              "type": "object",
+              "properties": {
+                "start": {
+                  "type": "string",
+                  "format": "time"
+                },
+                "end": {
+                  "type": "string",
+                  "format": "time"
+                },
+                "timezone": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "action": {
+          "type": "string",
+          "enum": ["allow", "deny", "escalate"],
+          "description": "Action to take when conditions match"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Human-readable reason for this rule"
+        }
+      }
+    }
+  }
+}

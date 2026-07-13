@@ -1,0 +1,135 @@
+apiVersion: envelope.ai/v1
+kind: ModelManifest
+metadata:
+  name: call-agent-v3
+  version: v3.0.0
+  description: Customer service call center agent with full envelope governance
+  labels:
+    domain: customer-service
+    use-case: call-center
+    tier: production
+  annotations:
+    owner: customer-experience-team
+    compliance-reviewed: "true"
+    last-audit: "2024-01-15"
+
+spec:
+  model:
+    id: llama3.1:70b
+    backend: ollama
+    endpoint: http://model-cluster.internal:11434
+    parameters:
+      temperature: 0.3
+      maxTokens: 2048
+      topP: 0.9
+
+  tools:
+    allowed:
+      - customer_lookup
+      - account_summary
+      - transaction_history
+      - create_ticket
+      - transfer_call
+      - send_notification
+    manifests:
+      - tools/customer_lookup.yaml
+      - tools/account_summary.yaml
+      - tools/transaction_history.yaml
+      - tools/create_ticket.yaml
+      - tools/transfer_call.yaml
+      - tools/send_notification.yaml
+
+  dataClasses:
+    allowed:
+      - general_inquiry
+      - account_info
+      - transaction_data
+      - customer_profile
+    denied:
+      - payment_card
+      - credit_data
+      - kyc_data
+    taxonomy: taxonomy.yaml
+
+  placement:
+    policy: placement.yaml
+    currentPlacement: on-premises-primary
+    fallbackPlacement: on-premises-dr
+
+  escalation:
+    conditions:
+      - id: low-confidence
+        trigger: confidence_low
+        threshold: 0.4
+        description: Escalate when model confidence is below threshold
+
+      - id: tool-failure
+        trigger: tool_failure
+        description: Escalate on any tool execution failure
+
+      - id: compliance-trigger
+        trigger: policy_violation
+        description: Escalate on policy violations
+
+      - id: customer-request
+        trigger: explicit_request
+        patterns:
+          - "speak to a human"
+          - "talk to a person"
+          - "supervisor"
+          - "manager"
+        description: Escalate on explicit customer request
+
+      - id: sensitive-topic
+        trigger: custom
+        customRule: topic in ['complaint', 'fraud', 'legal']
+        description: Escalate sensitive topics to specialists
+
+      - id: high-value-customer
+        trigger: custom
+        customRule: customer.tier == 'platinum'
+        description: Route platinum customers to senior agents
+
+    handler:
+      type: webhook
+      endpoint: https://case-management.internal/api/v2/escalations
+      config:
+        timeout: 30
+        retry: 3
+        headers:
+          X-Source: envelope
+          X-Priority: high
+
+  callers:
+    allowedRoles:
+      - call_center_agent
+      - senior_agent
+      - supervisor
+      - quality_analyst
+    allowedCallerIds: []
+    denyList:
+      - suspended_agent_*
+
+  goldenSet:
+    path: golden_set.yaml
+    runOnLoad: true
+    runOnSchedule: "0 */2 * * *"
+    failureThreshold: 0.95
+    alertOnFailure: true
+
+  monitoring:
+    metrics:
+      enabled: true
+      endpoint: http://prometheus.internal:9090
+    tracing:
+      enabled: true
+      endpoint: http://jaeger.internal:14268
+    logging:
+      level: INFO
+      format: json
+
+  resourceLimits:
+    maxConcurrentRequests: 100
+    requestTimeout: 30000
+    maxInputTokens: 4096
+    maxOutputTokens: 2048

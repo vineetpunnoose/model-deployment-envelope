@@ -1,0 +1,169 @@
+apiVersion: envelope.ai/v1
+kind: PlacementPolicy
+metadata:
+  name: bfsi-placement
+  version: v1.0.0
+  description: Placement policy for BFSI workloads
+spec:
+  placements:
+    - id: on-premises-dc
+      type: on-premises
+      provider: internal
+      region: us-east
+      jurisdiction:
+        - US
+      certifications:
+        - SOC2
+        - ISO27001
+      encryptionAtRest: true
+      encryptionInTransit: true
+      attributes:
+        tier: production
+        data_center: primary
+
+    - id: private-cloud-us
+      type: private-cloud
+      provider: vmware
+      region: us-west
+      jurisdiction:
+        - US
+      certifications:
+        - SOC2
+        - ISO27001
+        - HIPAA
+      encryptionAtRest: true
+      encryptionInTransit: true
+
+    - id: pci-certified
+      type: on-premises
+      provider: internal
+      region: us-east
+      jurisdiction:
+        - US
+      certifications:
+        - PCI-DSS
+        - SOC2
+        - ISO27001
+      encryptionAtRest: true
+      encryptionInTransit: true
+      attributes:
+        pci_zone: true
+        network_segment: isolated
+
+    - id: public-cloud
+      type: public-cloud
+      provider: aws
+      region: us-east-1
+      jurisdiction:
+        - US
+      certifications:
+        - SOC2
+        - ISO27001
+      encryptionAtRest: true
+      encryptionInTransit: true
+
+    - id: edge
+      type: edge
+      provider: branch
+      region: multiple
+      jurisdiction:
+        - US
+      certifications: []
+      encryptionAtRest: false
+      encryptionInTransit: true
+
+  rules:
+    # PCI-DSS data must be in PCI-certified environment
+    - id: pci-data-placement
+      description: Payment card data requires PCI-DSS certified placement
+      priority: 10
+      conditions:
+        dataClasses:
+          - payment_card
+        requiredCertifications:
+          - PCI-DSS
+      action: allow
+      reason: PCI data allowed only in PCI-certified environments
+
+    - id: pci-data-deny-non-certified
+      description: Deny payment card data in non-PCI environments
+      priority: 11
+      conditions:
+        dataClasses:
+          - payment_card
+      action: deny
+      reason: Payment card data not allowed in non-PCI-certified environments
+
+    # Restricted data requires on-premises or private cloud
+    - id: restricted-on-premises
+      description: Restricted data allowed on-premises
+      priority: 20
+      conditions:
+        sensitivity:
+          min: restricted
+        placementType:
+          - on-premises
+          - private-cloud
+      action: allow
+      reason: Restricted data allowed in on-premises/private-cloud
+
+    - id: restricted-deny-public
+      description: Restricted data denied in public cloud
+      priority: 21
+      conditions:
+        sensitivity:
+          min: restricted
+        placementType:
+          - public-cloud
+          - edge
+      action: deny
+      reason: Restricted data not allowed in public cloud or edge
+
+    # Confidential data requires encryption
+    - id: confidential-encrypted
+      description: Confidential data allowed with encryption
+      priority: 30
+      conditions:
+        sensitivity:
+          min: confidential
+          max: confidential
+      action: allow
+      reason: Confidential data allowed with encryption
+
+    # KYC data has special requirements
+    - id: kyc-placement
+      description: KYC data placement rules
+      priority: 15
+      conditions:
+        dataClasses:
+          - kyc_data
+        placementType:
+          - on-premises
+          - private-cloud
+      action: allow
+      reason: KYC data allowed in secure placements
+
+    # Internal and public data allowed anywhere
+    - id: internal-anywhere
+      description: Internal data allowed in most placements
+      priority: 50
+      conditions:
+        sensitivity:
+          max: internal
+      action: allow
+      reason: Low sensitivity data allowed
+
+    # Investment advice requires special handling
+    - id: investment-advice
+      description: Investment advice requires on-premises
+      priority: 12
+      conditions:
+        dataClasses:
+          - investment_advice
+        placementType:
+          - on-premises
+          - private-cloud
+      action: allow
+      reason: Investment advice allowed in secure placements
+
+  defaultAction: deny

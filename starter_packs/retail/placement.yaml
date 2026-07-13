@@ -1,0 +1,128 @@
+apiVersion: envelope.ai/v1
+kind: PlacementPolicy
+metadata:
+  name: retail-placement
+  version: v1.0.0
+  description: Placement policy for retail workloads
+spec:
+  placements:
+    - id: cloud-primary
+      type: public-cloud
+      provider: aws
+      region: us-east-1
+      jurisdiction:
+        - US
+      certifications:
+        - SOC2
+        - ISO27001
+      encryptionAtRest: true
+      encryptionInTransit: true
+
+    - id: cloud-eu
+      type: public-cloud
+      provider: aws
+      region: eu-west-1
+      jurisdiction:
+        - EU
+      certifications:
+        - SOC2
+        - ISO27001
+        - GDPR
+      encryptionAtRest: true
+      encryptionInTransit: true
+
+    - id: pci-secure
+      type: private-cloud
+      provider: internal
+      region: us-east
+      jurisdiction:
+        - US
+      certifications:
+        - PCI-DSS
+        - SOC2
+      encryptionAtRest: true
+      encryptionInTransit: true
+
+    - id: edge-store
+      type: edge
+      provider: store-systems
+      region: multiple
+      jurisdiction:
+        - US
+      certifications: []
+      encryptionAtRest: false
+      encryptionInTransit: true
+
+  rules:
+    # Payment data requires PCI environment
+    - id: payment-pci
+      description: Payment data requires PCI-DSS
+      priority: 10
+      conditions:
+        dataClasses:
+          - payment_info
+        requiredCertifications:
+          - PCI-DSS
+      action: allow
+      reason: Payment data allowed in PCI environment
+
+    - id: payment-deny-other
+      description: Payment data denied elsewhere
+      priority: 11
+      conditions:
+        dataClasses:
+          - payment_info
+      action: deny
+      reason: Payment data requires PCI certification
+
+    # EU customer data must stay in EU
+    - id: eu-customer-data
+      description: EU customer data placement
+      priority: 15
+      conditions:
+        dataClasses:
+          - customer_profile
+        jurisdiction:
+          - EU
+      action: allow
+      reason: EU customer data in GDPR-compliant region
+
+    # Confidential data in cloud or private
+    - id: confidential-cloud
+      description: Confidential data in cloud
+      priority: 30
+      conditions:
+        sensitivity:
+          min: confidential
+          max: confidential
+        placementType:
+          - public-cloud
+          - private-cloud
+      action: allow
+      reason: Confidential data allowed in cloud with encryption
+
+    # Internal and public anywhere
+    - id: low-sensitivity
+      description: Low sensitivity data
+      priority: 50
+      conditions:
+        sensitivity:
+          max: internal
+      action: allow
+      reason: Low sensitivity data allowed
+
+    # Edge for store operations
+    - id: edge-store-data
+      description: Edge placement for store operations
+      priority: 40
+      conditions:
+        dataClasses:
+          - product_catalog
+          - store_info
+          - inventory_data
+        placementType:
+          - edge
+      action: allow
+      reason: Store operational data at edge
+
+  defaultAction: deny

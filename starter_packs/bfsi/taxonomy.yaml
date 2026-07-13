@@ -1,0 +1,177 @@
+apiVersion: envelope.ai/v1
+kind: DataClassTaxonomy
+metadata:
+  name: bfsi
+  version: v1.0.0
+  description: Banking, Financial Services, and Insurance data taxonomy
+spec:
+  sensitivityLevels:
+    - name: public
+      rank: 0
+      description: Publicly available information
+      handlingRules:
+        - No restrictions on storage or processing
+        - Can be shared externally
+
+    - name: internal
+      rank: 1
+      description: Internal business information
+      handlingRules:
+        - Must not be shared externally without approval
+        - Standard access controls required
+
+    - name: confidential
+      rank: 2
+      description: Confidential business and customer information
+      handlingRules:
+        - Encryption required in transit and at rest
+        - Access restricted to authorized personnel
+        - Audit logging required
+
+    - name: restricted
+      rank: 3
+      description: Highly sensitive regulated data
+      handlingRules:
+        - Strong encryption required
+        - Strict access controls
+        - Full audit trail mandatory
+        - Data residency restrictions apply
+
+    - name: prohibited
+      rank: 4
+      description: Data that cannot be processed by AI systems
+      handlingRules:
+        - Cannot be processed by AI systems
+        - Manual handling only
+        - Maximum security controls
+
+  classes:
+    - name: general_inquiry
+      displayName: General Inquiry
+      description: General customer inquiries without sensitive data
+      sensitivity: public
+
+    - name: account_info
+      displayName: Account Information
+      description: Basic account details (account type, status)
+      sensitivity: internal
+      piiFields:
+        - account_number
+      retentionDays: 2555
+
+    - name: transaction_data
+      displayName: Transaction Data
+      description: Transaction history and details
+      sensitivity: confidential
+      piiFields:
+        - account_number
+        - counterparty
+        - amount
+      retentionDays: 2555
+      encryptionRequired: true
+      regulatoryFrameworks:
+        - PCI-DSS
+        - SOX
+
+    - name: personal_financial
+      displayName: Personal Financial Information
+      description: Personal financial details (income, assets, liabilities)
+      sensitivity: confidential
+      piiFields:
+        - income
+        - net_worth
+        - debt_amount
+      encryptionRequired: true
+      regulatoryFrameworks:
+        - GLBA
+        - CCPA
+
+    - name: credit_data
+      displayName: Credit Data
+      description: Credit scores, history, and reports
+      sensitivity: restricted
+      piiFields:
+        - credit_score
+        - credit_history
+        - ssn
+      encryptionRequired: true
+      retentionDays: 2555
+      regulatoryFrameworks:
+        - FCRA
+        - ECOA
+      placements:
+        allowed:
+          - on-premises-dc
+          - private-cloud-us
+        denied:
+          - public-cloud
+          - edge
+
+    - name: payment_card
+      displayName: Payment Card Data
+      description: Credit/debit card information
+      sensitivity: restricted
+      piiFields:
+        - card_number
+        - cvv
+        - expiry_date
+      encryptionRequired: true
+      retentionDays: 0
+      regulatoryFrameworks:
+        - PCI-DSS
+      placements:
+        allowed:
+          - pci-certified
+        denied:
+          - public-cloud
+          - edge
+          - on-premises-dc
+
+    - name: kyc_data
+      displayName: KYC Data
+      description: Know Your Customer verification data
+      sensitivity: restricted
+      piiFields:
+        - government_id
+        - date_of_birth
+        - address
+        - photo_id
+      encryptionRequired: true
+      retentionDays: 3650
+      regulatoryFrameworks:
+        - BSA
+        - AML
+      placements:
+        denied:
+          - public-cloud
+          - edge
+
+    - name: insurance_claim
+      displayName: Insurance Claim
+      description: Insurance claim details
+      sensitivity: confidential
+      piiFields:
+        - policy_number
+        - claimant_info
+        - medical_info
+      encryptionRequired: true
+      retentionDays: 3650
+      regulatoryFrameworks:
+        - HIPAA
+        - state_insurance_laws
+
+    - name: investment_advice
+      displayName: Investment Advice
+      description: Investment recommendations and advice
+      sensitivity: restricted
+      piiFields:
+        - portfolio_details
+        - risk_profile
+      encryptionRequired: true
+      regulatoryFrameworks:
+        - SEC
+        - FINRA
+      placements:
+        denied:
+          - public-cloud
+          - edge

@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://envelope.example.com/schemas/tool-manifest.schema.json",
+  "title": "Tool Manifest",
+  "description": "Manifest for tools available to AI models with explicit permission boundaries",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "const": "envelope.ai/v1"
+    },
+    "kind": {
+      "type": "string",
+      "const": "ToolManifest"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Unique tool name"
+        },
+        "version": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["type", "schema"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["function", "api", "database", "file", "custom"],
+          "description": "Type of tool"
+        },
+        "schema": {
+          "type": "object",
+          "description": "JSON Schema for tool input parameters",
+          "required": ["type", "properties"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "object"
+            },
+            "properties": {
+              "type": "object"
+            },
+            "required": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "returnSchema": {
+          "type": "object",
+          "description": "JSON Schema for tool return value"
+        },
+        "dataClasses": {
+          "type": "object",
+          "properties": {
+            "input": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Data classes the tool may receive as input"
+            },
+            "output": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Data classes the tool may produce as output"
+            }
+          }
+        },
+        "permissions": {
+          "type": "object",
+          "properties": {
+            "requiredRoles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Roles required to invoke this tool"
+            },
+            "rateLimit": {
+              "type": "object",
+              "properties": {
+                "maxCalls": {
+                  "type": "integer"
+                },
+                "windowSeconds": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "implementation": {
+          "type": "object",
+          "properties": {
+            "handler": {
+              "type": "string",
+              "description": "Handler function path (e.g., 'tools.lookup:customer_lookup')"
+            },
+            "endpoint": {
+              "type": "string",
+              "format": "uri",
+              "description": "API endpoint for remote tools"
+            },
+            "timeout": {
+              "type": "integer",
+              "default": 30,
+              "description": "Timeout in seconds"
+            }
+          }
+        },
+        "audit": {
+          "type": "object",
+          "properties": {
+            "logInputs": {
+              "type": "boolean",
+              "default": true
+            },
+            "logOutputs": {
+              "type": "boolean",
+              "default": true
+            },
+            "redactFields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Field paths to redact in logs"
+            }
+          }
+        }
+      }
+    }
+  }
+}

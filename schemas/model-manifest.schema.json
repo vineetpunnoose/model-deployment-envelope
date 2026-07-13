@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://envelope.example.com/schemas/model-manifest.schema.json",
+  "title": "Model Manifest",
+  "description": "Declarative manifest for a deployed AI model with platform-enforced boundaries",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "const": "envelope.ai/v1",
+      "description": "API version for this manifest"
+    },
+    "kind": {
+      "type": "string",
+      "const": "ModelManifest",
+      "description": "Kind of resource"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+          "minLength": 3,
+          "maxLength": 63,
+          "description": "Unique identifier for the model deployment"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+(-[a-z0-9]+)?$",
+          "description": "Semantic version of this manifest"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["model", "tools", "dataClasses", "placement", "escalation"],
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "object",
+          "required": ["id", "backend"],
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Model identifier (e.g., 'llama3.1:8b', 'gpt-4o', 'claude-3-sonnet')"
+            },
+            "backend": {
+              "type": "string",
+              "enum": ["ollama", "vllm", "openai", "anthropic"],
+              "description": "Backend runtime for the model"
+            },
+            "endpoint": {
+              "type": "string",
+              "format": "uri",
+              "description": "Override endpoint URL (optional)"
+            },
+            "parameters": {
+              "type": "object",
+              "description": "Model-specific parameters",
+              "properties": {
+                "temperature": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2
+                },
+                "maxTokens": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "topP": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          }
+        },
+        "tools": {
+          "type": "object",
+          "required": ["allowed"],
+          "additionalProperties": false,
+          "properties": {
+            "allowed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true,
+              "description": "Explicit list of allowed tool names (deny-by-default)"
+            },
+            "manifests": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Paths to tool manifest files"
+            }
+          }
+        },
+        "dataClasses": {
+          "type": "object",
+          "required": ["allowed", "taxonomy"],
+          "additionalProperties": false,
+          "properties": {
+            "allowed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true,
+              "description": "Allowed data classes for this deployment"
+            },
+            "taxonomy": {
+              "type": "string",
+              "description": "Path to data class taxonomy file"
+            }
+          }
+        },
+        "placement": {
+          "type": "object",
+          "required": ["policy"],
+          "additionalProperties": false,
+          "properties": {
+            "policy": {
+              "type": "string",
+              "description": "Path to placement policy file"
+            },
+            "currentPlacement": {
+              "type": "string",
+              "description": "Current placement identifier"
+            }
+          }
+        },
+        "escalation": {
+          "type": "object",
+          "required": ["conditions", "handler"],
+          "additionalProperties": false,
+          "properties": {
+            "conditions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "trigger"],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "trigger": {
+                    "type": "string",
+                    "enum": ["confidence_low", "tool_failure", "policy_violation", "explicit_request", "data_class_mismatch", "custom"]
+                  },
+                  "threshold": {
+                    "type": "number"
+                  },
+                  "customRule": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "handler": {
+              "type": "object",
+              "required": ["type"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["webhook", "reference_sink", "custom"]
+                },
+                "endpoint": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "config": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "callers": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allowedRoles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Roles permitted to call this model"
+            },
+            "allowedCallerIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Specific caller IDs permitted"
+            }
+          }
+        },
+        "goldenSet": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Path to golden set YAML file"
+            },
+            "runOnLoad": {
+              "type": "boolean",
+              "default": true
+            },
+            "runOnSchedule": {
+              "type": "string",
+              "description": "Cron expression for scheduled runs"
+            }
+          }
+        }
+      }
+    }
+  }
+}
