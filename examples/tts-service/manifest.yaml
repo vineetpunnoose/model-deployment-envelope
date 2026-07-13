@@ -1,0 +1,130 @@
+apiVersion: envelope.ai/v1
+kind: ModelManifest
+metadata:
+  name: tts-service
+  version: v1.0.0
+  description: Text-to-Speech service with governance envelope
+  labels:
+    domain: voice
+    use-case: tts
+    model-type: audio-generation
+
+spec:
+  model:
+    id: coqui-xtts-v2  # or your local TTS model
+    backend: local-tts
+    endpoint: http://localhost:5002
+    parameters:
+      defaultVoice: "en-female-1"
+      sampleRate: 22050
+      outputFormat: wav
+
+  # What the TTS can do
+  tools:
+    allowed:
+      - synthesize_speech      # Core TTS function
+      - list_voices            # Get available voices
+      - detect_language        # Auto-detect input language
+    denied:
+      - clone_voice            # Voice cloning is restricted
+      - train_voice            # Custom voice training blocked
+    manifests:
+      - tools/synthesize_speech.yaml
+      - tools/list_voices.yaml
+
+  # What content can be spoken
+  dataClasses:
+    allowed:
+      - public_content         # Public announcements, general text
+      - product_info           # Product descriptions
+      - notification_text      # System notifications
+      - accessibility_content  # Screen reader content
+    denied:
+      - customer_pii           # No speaking PII (names, addresses, SSNs)
+      - financial_data         # No speaking account numbers
+      - medical_data           # No speaking health info
+      - credentials            # No speaking passwords/tokens
+    taxonomy: taxonomy.yaml
+
+  # Voice access controls
+  voices:
+    allowed:
+      - en-female-1
+      - en-male-1
+      - es-female-1
+      - fr-male-1
+    restricted:
+      - executive-voice-*      # Cloned executive voices need approval
+      - celebrity-*            # Celebrity voices blocked
+    requireApproval:
+      - custom-*               # Custom voices need manager approval
+
+  placement:
+    policy: placement.yaml
+    currentPlacement: on-premises-gpu
+
+  # Who can use TTS
+  callers:
+    allowedRoles:
+      - app_service            # Backend services
+      - accessibility_service  # Screen readers
+      - notification_service   # Alert systems
+      - content_service        # Content platforms
+    denied:
+      - public_api             # No unauthenticated access
+      - external_partner       # External access blocked
+
+  # Rate limits (audio generation is expensive)
+  rateLimits:
+    perCaller:
+      requestsPerMinute: 60
+      charactersPerMinute: 10000
+      audioMinutesPerHour: 30
+    global:
+      concurrentRequests: 10
+
+  # Content filters
+  contentFilters:
+    enabled: true
+    rules:
+      - id: no-pii-speech
+        description: Block PII from being spoken
+        patterns:
+          - ssn: '\d{3}-\d{2}-\d{4}'
+          - credit_card: '\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}'
+          - phone: '\(\d{3}\)\s*\d{3}-\d{4}'
+          - email: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+        action: redact_and_warn
+
+      - id: no-profanity
+        description: Block profanity
+        action: reject
+
+      - id: no-impersonation
+        description: Block impersonation attempts
+        patterns:
+          - "I am [CEO|President|Executive]"
+          - "This is [Name] speaking"
+        action: escalate
+
+  escalation:
+    conditions:
+      - id: restricted-voice
+        trigger: voice_restricted
+        description: Escalate when restricted voice requested
+
+      - id: high-volume
+        trigger: rate_exceeded
+        description: Escalate on unusual volume
+
+      - id: suspicious-content
+        trigger: content_flagged
+        description: Escalate on flagged content
+
+    handler:
+      type: webhook
+      endpoint: https://security.internal/api/tts-alerts
+
+  goldenSet:
+    path: golden_set.yaml
+    runOnLoad: true
